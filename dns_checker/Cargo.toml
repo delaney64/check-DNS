@@ -1,0 +1,8 @@
+[package]
+name = "dns_checker"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+trust-dns-resolver = "0.22.0"  # For DNS resolution
+ansi_term = "0.12.1"           # For colored terminal output
