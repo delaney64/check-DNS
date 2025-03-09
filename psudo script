@@ -1,0 +1,71 @@
+FUNCTION parse_spf_record(spf_record):
+    Split spf_record into parts
+    FOR each part in parts:
+        IF part starts with "include:" OR "ip4:" OR "ip6:":
+            YIELD part
+    END FOR
+END FUNCTION
+
+FUNCTION check_spf(domain):
+    TRY:
+        Resolve TXT records for domain
+        FOR each record in the results:
+            IF record starts with "v=spf1":
+                PRINT "SPF record found:"
+                FOR each authorized_sender in parse_spf_record(record):
+                    PRINT authorized_sender
+                END FOR
+                RETURN
+            END IF
+        END FOR
+        PRINT "No SPF record found"
+    CATCH Exception as e:
+        PRINT "Error checking SPF record: " + e
+    END TRY
+END FUNCTION
+
+FUNCTION check_dkim(domain, selectors):
+    SET dkim_records_found = FALSE
+    FOR each selector in selectors:
+        SET dkim_record_name = selector + "._domainkey." + domain
+        TRY:
+            Resolve TXT records for dkim_record_name
+            FOR each record in the results:
+                PRINT "DKIM record found for selector '" + selector + "': " + record
+                SET dkim_records_found = TRUE
+            END FOR
+        CATCH Exception:
+            CONTINUE to next selector
+        END TRY
+    END FOR
+
+    IF NOT dkim_records_found:
+        PRINT "No DKIM records found for common selectors"
+    END IF
+END FUNCTION
+
+FUNCTION check_dmarc(domain):
+    TRY:
+        Resolve TXT records for "_dmarc." + domain
+        FOR each record in the results:
+            PRINT "DMARC record found: " + record
+            RETURN
+        END FOR
+        PRINT "No DMARC record found"
+    CATCH Exception as e:
+        PRINT "Error checking DMARC record: " + e
+    END TRY
+END FUNCTION
+
+MAIN:
+    Define selectors = ["default", "google", "mail", "k1", "selector1", "selector2", "s1", "s2"]
+    Read domains from file "client-domains.txt"
+
+    FOR each domain in domains:
+        PRINT "Checking domain: " + domain
+        call check_spf(domain)
+        call check_dkim(domain, selectors)
+        call check_dmarc(domain)
+        PRINT newline
+    END FOR
+END MAIN
