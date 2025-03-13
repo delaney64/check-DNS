@@ -30,3 +30,37 @@ fn parse_spf_record(spf_record: &str) -> Vec<String> {
     mechanisms
 }
 // The main check_spf function will go here
+
+/// Check the SPF record for a domain
+pub fn check_spf(resolver: &Resolver, domain: &str) -> Result<()> {
+    println!("\nSPF Record Check:");
+
+    // Query TXT records for the domain
+    let response = resolver
+        .txt_lookup(domain)
+        .map_err(|e| DnsError::ResolutionError(e.to_string()))?;
+
+    // Look for SPF records
+    let mut spf_found = false;
+
+    for record in response.iter() {
+        let txt_data = txt_to_string(record);
+
+        // Check if this is an SPF record
+        if txt_data.starts_with("v=spf1") {
+            spf_found = true;
+            println!("  SPF record found: {}", txt_data);
+
+            // Parse and display the SPF mechanisms
+            for mechanism in parse_spf_record(&txt_data) {
+                println!("    - {}", mechanism);
+            }
+        }
+    }
+
+    if !spf_found {
+        println!("  No SPF record found for {}", domain);
+    }
+
+    Ok(())
+}
